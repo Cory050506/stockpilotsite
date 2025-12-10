@@ -1,3 +1,4 @@
+/// <reference types="react" />
 import Image from "next/image";
 
 export default function Home() {
@@ -204,7 +205,8 @@ function ItemBar({ label, status, percent, color }: any) {
         <div className="font-medium text-slate-800">{status}</div>
       </div>
       <div className="mt-2 h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-2 ${color}`} style={{ width: `${percent}%` }}></div>
+        {/* dynamic width using Tailwind arbitrary value (e.g. w-[20%]) */}
+        <div className={`h-2 ${color} w-[${percent}%]`}></div>
       </div>
     </div>
   );
