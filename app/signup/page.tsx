@@ -29,9 +29,6 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-6">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow">
         <h1 className="text-3xl font-bold text-center">Create your account</h1>
-        <p className="text-center text-zinc-600 mt-1">
-          StockPilot — no free plan, subscriptions only.
-        </p>
 
         {error && (
           <div className="mt-4 bg-red-100 text-red-700 p-2 text-sm rounded">
