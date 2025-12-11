@@ -29,6 +29,10 @@ export default function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+
+
   // AUTH + ITEM SUBSCRIPTION
   useEffect(() => {
     let unsubscribeItems: any = null;
@@ -247,11 +251,14 @@ function getStatus(item: any) {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md"
-                      >
-                        Delete
-                      </button>
+  onClick={() => {
+    setDeleteItemId(item.id);
+    setShowDeleteModal(true);
+  }}
+  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md"
+>
+  Delete
+</button>
 
                       <button
   onClick={() => handleRefillItem(item.id)}
@@ -389,6 +396,44 @@ function getStatus(item: any) {
                   Save Changes
                 </button>
               </div>
+
+              {/* ========================= */}
+{/* DELETE CONFIRMATION MODAL */}
+{/* ========================= */}
+{showDeleteModal && deleteItemId && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+    <div className="bg-white w-full max-w-sm rounded-xl shadow-lg p-6 text-center">
+      <h2 className="text-xl font-semibold">Delete Item?</h2>
+      <p className="text-slate-600 mt-2">
+        This action cannot be undone.
+      </p>
+
+      <div className="flex gap-3 mt-6">
+        <button
+          onClick={() => {
+            setShowDeleteModal(false);
+            setDeleteItemId(null);
+          }}
+          className="w-1/2 p-3 rounded-lg border"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            handleDeleteItem(deleteItemId);
+            setShowDeleteModal(false);
+            setDeleteItemId(null);
+          }}
+          className="w-1/2 bg-red-600 text-white p-3 rounded-lg"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
             </form>
           </div>
         </div>
