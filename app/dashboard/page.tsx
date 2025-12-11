@@ -28,9 +28,7 @@ export default function DashboardHome() {
     dueToday: 0,
   });
 
-  // -----------------------------
   // AUTH CHECK
-  // -----------------------------
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) router.push("/login");
@@ -39,9 +37,7 @@ export default function DashboardHome() {
     return () => unsub();
   }, [router]);
 
-  // -----------------------------
-  // FETCH USER ITEMS
-  // -----------------------------
+  // FETCH ITEMS
   useEffect(() => {
     if (!user) return;
 
@@ -61,9 +57,7 @@ export default function DashboardHome() {
     return () => unsubItems();
   }, [user]);
 
-  // -----------------------------
   // STATS CALCULATION
-  // -----------------------------
   function calculateStats(items: any[]) {
     const today = new Date();
     let runningLow = 0;
@@ -91,9 +85,6 @@ export default function DashboardHome() {
     });
   }
 
-  // -----------------------------
-  // GRAPH DATA
-  // -----------------------------
   const graphData = items
     .map((item) => {
       if (!item.createdAt) return null;
@@ -117,46 +108,87 @@ export default function DashboardHome() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
     >
-      <main className="flex-1 p-10">
-        {/* HEADER WITH LOGOUT */}
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div>
-            <motion.h1
-              className="text-3xl font-bold"
-              initial={{ opacity: 0, y: -15 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              Dashboard
-            </motion.h1>
 
-            <motion.p
-              className="text-slate-600 mt-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              Welcome back, {user?.email}! Here's your supply overview:
-            </motion.p>
-          </div>
+      {/* =============================== */}
+      {/* SIDEBAR (same as Items page) */}
+      {/* =============================== */}
+      <aside className="w-64 bg-white border-r p-6 hidden md:flex flex-col">
+        <motion.h1
+          className="text-2xl font-bold mb-8"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
+          StockPilot
+        </motion.h1>
 
-          <motion.button
-            onClick={() => signOut(auth)}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+        <nav className="flex flex-col gap-2">
+
+          <motion.a
+            href="/dashboard"
+            className="flex items-center gap-3 p-2 rounded-lg bg-slate-100 font-semibold"
+            whileHover={{ x: 4 }}
           >
-            Log Out
-          </motion.button>
-        </div>
+            📊 Dashboard
+          </motion.a>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <motion.a
+            href="/dashboard/items"
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100"
+            whileHover={{ x: 4 }}
+          >
+            📦 Items
+          </motion.a>
+
+          <motion.a
+            href="/dashboard/settings"
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100"
+            whileHover={{ x: 4 }}
+          >
+            ⚙️ Settings
+          </motion.a>
+
+        </nav>
+
+        <motion.button
+          onClick={() => signOut(auth)}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="mt-auto bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg"
+        >
+          Log Out
+        </motion.button>
+      </aside>
+
+      {/* =============================== */}
+      {/* MAIN CONTENT */}
+      {/* =============================== */}
+      <main className="flex-1 p-10">
+
+        <motion.h1
+          className="text-3xl font-bold"
+          initial={{ opacity: 0, y: -15 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          Dashboard
+        </motion.h1>
+
+        <motion.p
+          className="text-slate-600 mt-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          Welcome back, {user?.email}! Here's your supply overview:
+        </motion.p>
+
+        {/* STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <motion.div className="p-6 bg-white rounded-xl shadow">
             <h2 className="text-lg text-slate-600">Total Items</h2>
             <p className="text-4xl font-bold mt-2">{stats.totalItems}</p>
           </motion.div>
 
           <motion.div className="p-6 bg-white rounded-xl shadow">
-            <h2 className="text-lg text-slate-600">Running Low (≤ 3 days)</h2>
+            <h2 className="text-lg text-slate-600">Running Low (≤3 days)</h2>
             <p className="text-4xl font-bold mt-2 text-amber-600">
               {stats.runningLow}
             </p>
@@ -170,7 +202,7 @@ export default function DashboardHome() {
           </motion.div>
         </div>
 
-        {/* Graph */}
+        {/* GRAPH */}
         <motion.div
           className="mt-10 bg-white p-6 rounded-xl shadow"
           initial={{ opacity: 0, y: 25 }}
