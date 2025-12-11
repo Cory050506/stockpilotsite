@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../lib/firebase";
+import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
@@ -72,6 +73,30 @@ useEffect(() => {
     setShowModal(false);
   }
 
+async function handleDeleteItem(itemId: string) {
+  if (!user) return;
+
+  await deleteDoc(doc(db, "users", user.uid, "items", itemId));
+}
+
+async function handleEditItem(item: any) {
+  const newName = prompt("Edit name:", item.name);
+  const newDays = prompt("Edit days last:", item.daysLast);
+  const newVendor = prompt("Edit vendor:", item.vendor);
+
+  if (!newName || !newDays || !newVendor) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "items", item.id),
+    {
+      name: newName,
+      daysLast: Number(newDays),
+      vendor: newVendor,
+    }
+  );
+}
+
+
   return (
     <div className="min-h-screen p-10 bg-slate-50">
       <div className="max-w-4xl mx-auto">
@@ -106,14 +131,34 @@ useEffect(() => {
           ) : (
             <div className="space-y-3">
               {items.map((item) => (
-                <div key={item.id} className="p-4 border rounded-lg flex justify-between">
-                  <div>
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-slate-500 text-sm">
-                      Lasts {item.daysLast} days • From {item.vendor}
-                    </p>
-                  </div>
-                </div>
+                <div
+  key={item.id}
+  className="p-4 border rounded-lg flex justify-between items-center hover:bg-slate-100 transition cursor-pointer"
+>
+  <div>
+    <h3 className="font-semibold">{item.name}</h3>
+    <p className="text-slate-500 text-sm">
+      Lasts {item.daysLast} days • From {item.vendor}
+    </p>
+  </div>
+
+  <div className="flex gap-2">
+    <button
+      onClick={() => handleEditItem(item)}
+      className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md cursor-pointer"
+    >
+      Edit
+    </button>
+
+    <button
+      onClick={() => handleDeleteItem(item.id)}
+      className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md cursor-pointer"
+    >
+      Delete
+    </button>
+  </div>
+</div>
+
               ))}
             </div>
           )}
