@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -37,7 +37,7 @@ export default function DashboardHome() {
       else setUser(u);
     });
     return () => unsub();
-  }, []);
+  }, [router]);
 
   // -----------------------------
   // FETCH USER ITEMS
@@ -118,24 +118,38 @@ export default function DashboardHome() {
       transition={{ duration: 0.25 }}
     >
       <main className="flex-1 p-10">
-        <motion.h1
-          className="text-3xl font-bold"
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          Dashboard
-        </motion.h1>
+        {/* HEADER WITH LOGOUT */}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <motion.h1
+              className="text-3xl font-bold"
+              initial={{ opacity: 0, y: -15 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              Dashboard
+            </motion.h1>
 
-        <motion.p
-          className="text-slate-600 mt-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          Welcome back, {user?.email}! Here's your supply overview:
-        </motion.p>
+            <motion.p
+              className="text-slate-600 mt-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              Welcome back, {user?.email}! Here's your supply overview:
+            </motion.p>
+          </div>
+
+          <motion.button
+            onClick={() => signOut(auth)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
+            Log Out
+          </motion.button>
+        </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           <motion.div className="p-6 bg-white rounded-xl shadow">
             <h2 className="text-lg text-slate-600">Total Items</h2>
             <p className="text-4xl font-bold mt-2">{stats.totalItems}</p>
@@ -162,9 +176,7 @@ export default function DashboardHome() {
           initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h2 className="text-xl font-semibold mb-4">
-            Days Left Per Item
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Days Left Per Item</h2>
 
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
