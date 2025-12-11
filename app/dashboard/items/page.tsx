@@ -334,7 +334,7 @@ function getStatus(item: any) {
         </div>
       )}
 
-      {/* ========================= */}
+           {/* ========================= */}
       {/* EDIT ITEM MODAL */}
       {/* ========================= */}
       {showEditModal && editItem && (
@@ -396,48 +396,48 @@ function getStatus(item: any) {
                   Save Changes
                 </button>
               </div>
-
-              {/* ========================= */}
-{/* DELETE CONFIRMATION MODAL */}
-{/* ========================= */}
-{showDeleteModal && deleteItemId && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-    <div className="bg-white w-full max-w-sm rounded-xl shadow-lg p-6 text-center">
-      <h2 className="text-xl font-semibold">Delete Item?</h2>
-      <p className="text-slate-600 mt-2">
-        This action cannot be undone.
-      </p>
-
-      <div className="flex gap-3 mt-6">
-        <button
-          onClick={() => {
-            setShowDeleteModal(false);
-            setDeleteItemId(null);
-          }}
-          className="w-1/2 p-3 rounded-lg border"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={() => {
-            handleDeleteItem(deleteItemId);
-            setShowDeleteModal(false);
-            setDeleteItemId(null);
-          }}
-          className="w-1/2 bg-red-600 text-white p-3 rounded-lg"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
             </form>
           </div>
         </div>
       )}
+
+      {/* ========================= */}
+      {/* DELETE CONFIRMATION MODAL */}
+      {/* ========================= */}
+      {showDeleteModal && deleteItemId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-xl shadow-lg p-6 text-center">
+            <h2 className="text-xl font-semibold">Delete Item?</h2>
+            <p className="text-slate-600 mt-2">
+              This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteItemId(null);
+                }}
+                className="w-1/2 p-3 rounded-lg border"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  handleDeleteItem(deleteItemId);
+                  setShowDeleteModal(false);
+                  setDeleteItemId(null);
+                }}
+                className="w-1/2 bg-red-600 text-white p-3 rounded-lg"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );
