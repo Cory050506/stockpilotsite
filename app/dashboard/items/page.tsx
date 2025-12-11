@@ -84,6 +84,18 @@ export default function Dashboard() {
     await deleteDoc(doc(db, "users", user.uid, "items", itemId));
   }
 
+  async function handleRefillItem(itemId: string) {
+  if (!user) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "items", itemId),
+    {
+      createdAt: serverTimestamp(),
+    }
+  );
+}
+
+
   // EDIT ITEM
   async function handleEditSubmit(e: any) {
     e.preventDefault();
@@ -98,6 +110,26 @@ export default function Dashboard() {
     setShowEditModal(false);
     setEditItem(null);
   }
+
+  // STATUS & DAYS REMAINING CALCULATOR
+function getStatus(item: any) {
+  if (!item.createdAt) return null;
+
+  const createdDate = item.createdAt.toDate();
+  const today = new Date();
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const diffDays = Math.floor(
+    (today.getTime() - createdDate.getTime()) / msPerDay
+  );
+
+  const daysLeft = item.daysLast - diffDays;
+
+  if (daysLeft <= 0) return { label: "Due Today", color: "red", daysLeft: 0 };
+  if (daysLeft <= 3) return { label: "Running Low", color: "amber", daysLeft };
+  return { label: "OK", color: "green", daysLeft };
+}
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -180,12 +212,28 @@ export default function Dashboard() {
                     key={item.id}
                     className="p-4 border rounded-lg flex justify-between items-center hover:bg-slate-100 transition"
                   >
-                    <div>
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-slate-500 text-sm">
-                        Lasts {item.daysLast} days • From {item.vendor}
-                      </p>
-                    </div>
+                    <div className="flex flex-col">
+  <h3 className="font-semibold">{item.name}</h3>
+
+  {/* Status pill */}
+  {(() => {
+    const s = getStatus(item);
+    return s ? (
+      <span
+        className={`mt-1 inline-block px-2 py-1 text-xs rounded bg-${s.color}-100 text-${s.color}-700`}
+      >
+        {s.label} • {s.daysLeft} days left
+      </span>
+    ) : null;
+  })()}
+
+  <p className="text-slate-500 text-sm mt-2">
+    From: {item.vendor}
+    <br />
+    Last refilled:{" "}
+    {item.createdAt ? item.createdAt.toDate().toLocaleDateString() : "Unknown"}
+  </p>
+</div>
 
                     <div className="flex gap-2">
                       <button
@@ -204,6 +252,14 @@ export default function Dashboard() {
                       >
                         Delete
                       </button>
+
+                      <button
+  onClick={() => handleRefillItem(item.id)}
+  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md cursor-pointer"
+>
+  Refill
+</button>
+
                     </div>
                   </div>
                 ))}
