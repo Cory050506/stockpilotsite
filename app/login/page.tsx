@@ -39,6 +39,14 @@ export default function LoginPage() {
           </p>
         )}
 
+        <a
+  href="/"
+  className="absolute top-6 left-6 text-sky-600 font-medium hover:underline"
+>
+  ← Back to Home
+</a>
+
+
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
             <label className="text-sm text-slate-600">Email</label>

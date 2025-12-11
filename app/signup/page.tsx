@@ -36,6 +36,14 @@ export default function SignupPage() {
           </div>
         )}
 
+        <a
+  href="/"
+  className="absolute top-6 left-6 text-sky-600 font-medium hover:underline"
+>
+  ← Back to Home
+</a>
+
+
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700">
