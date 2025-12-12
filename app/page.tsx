@@ -173,8 +173,9 @@ export default function Home() {
           <Reveal><h2 className="text-2xl font-semibold">Pricing</h2></Reveal>
 
           <div className="mt-6 grid md:grid-cols-2 gap-6">
-            <Reveal delay={0.1}><PriceCard label="Standard" price="$9/mo" desc="Unlimited items • SMS & Push • Team Access" button={{ label: "Subscribe", href: "/signup", primary: true }} /></Reveal>
-            <Reveal delay={0.2}><PriceCard label="Business" price="Custom" desc="Multi-location • Dedicated support" button={{ label: "Contact Sales", href: "/contact" }} /></Reveal>
+            <Reveal delay={0.1}><PriceCard label="Standard" price="$9/mo" desc="Unlimited items • Email alerts • 1 device/location" button={{ label: "Subscribe", href: "/signup", primary: true }} /></Reveal>
+            <Reveal delay={0.2}><PriceCard label="Pro" price="Custom" desc="Multi-location • Dedicated support" button={{ label: "Signup", href: "/signup" }} /></Reveal>
+            <Reveal delay={0.3}><PriceCard label="Enterprise" price="Custom" desc="Coming soon • Expected early to late 2026" button={{ label: "Contact Sales", href: "/contact" }} /></Reveal>
           </div>
         </section>
 
