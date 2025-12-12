@@ -34,11 +34,34 @@ export default function ItemsPage() {
   const [items, setItems] = useState<ItemDoc[]>([]);
   const [alertedStatus, setAlertedStatus] = useState<Record<string, "low" | "out">>({});
 
-  // ADD MODAL
+  // ADD
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [daysLast, setDaysLast] = useState("");
   const [vendor, setVendor] = useState("");
+
+  // EDIT
+  const [showEdit, setShowEdit] = useState(false);
+  const [editItem, setEditItem] = useState<ItemDoc | null>(null);
+
+  // ============================
+  // STATUS
+  // ============================
+  function getStatus(item: ItemDoc) {
+    if (!item.createdAt) return null;
+
+    const created = item.createdAt.toDate();
+    const diffDays = Math.floor((Date.now() - created.getTime()) / 86400000);
+    const daysLeft = item.daysLast - diffDays;
+
+    if (daysLeft <= 0)
+      return { label: "Due Today", color: "bg-red-200 text-red-800", daysLeft: 0 };
+
+    if (daysLeft <= 3)
+      return { label: "Running Low", color: "bg-amber-200 text-amber-800", daysLeft };
+
+    return { label: "OK", color: "bg-green-200 text-green-800", daysLeft };
+  }
 
   // ============================
   // AUTH + DATA
@@ -54,17 +77,10 @@ export default function ItemsPage() {
 
       setUser(currentUser);
 
-      // Load user plan
       const userSnap = await getDoc(doc(db, "users", currentUser.uid));
       const rawPlan = userSnap.data()?.plan;
+      setPlan(rawPlan && rawPlan in PLANS ? rawPlan : "basic");
 
-if (rawPlan && rawPlan in PLANS) {
-  setPlan(rawPlan as keyof typeof PLANS);
-} else {
-  setPlan("basic");
-}
-
-      // Items listener
       unsubItems = onSnapshot(
         collection(db, "users", currentUser.uid, "items"),
         (snap) => {
@@ -75,7 +91,6 @@ if (rawPlan && rawPlan in PLANS) {
 
           setItems(itemsData);
 
-          // Email alerts
           itemsData.forEach((item) => {
             if (!item.createdAt || !currentUser.email) return;
 
@@ -99,7 +114,7 @@ if (rawPlan && rawPlan in PLANS) {
                   : `⚠️ ${item.name} is running low`,
               message:
                 status === "out"
-                  ? `${item.name} has run out and needs immediate restocking.`
+                  ? `${item.name} has run out and needs restocking.`
                   : `${item.name} will run out soon.`,
             });
 
@@ -113,31 +128,22 @@ if (rawPlan && rawPlan in PLANS) {
       unsubAuth();
       unsubItems?.();
     };
-  }, [router]);
+  }, [router, alertedStatus]);
 
   // ============================
-  // PLAN LIMITS (FIXED)
+  // PLAN LIMIT
   // ============================
   const planConfig = PLANS[plan];
+  const itemLimit =
+    "limits" in planConfig ? planConfig.limits.items : Infinity;
+  const atItemLimit = itemLimit !== Infinity && items.length >= itemLimit;
 
-const itemLimit =
-  "limits" in planConfig
-    ? planConfig.limits.items
-    : Infinity;
-
-const hasItemLimit = itemLimit !== Infinity;
-const atItemLimit = hasItemLimit && items.length >= itemLimit;
   // ============================
-  // ADD ITEM
+  // CRUD
   // ============================
   async function handleAddItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
-
-    if (atItemLimit) {
-      alert("You’ve reached your plan’s item limit. Upgrade to add more.");
-      return;
-    }
+    if (!user || atItemLimit) return;
 
     await addDoc(collection(db, "users", user.uid, "items"), {
       name,
@@ -152,6 +158,46 @@ const atItemLimit = hasItemLimit && items.length >= itemLimit;
     setShowAdd(false);
   }
 
+  async function handleRefillItem(id: string) {
+    if (!user) return;
+
+    await updateDoc(doc(db, "users", user.uid, "items", id), {
+      createdAt: serverTimestamp(),
+    });
+
+    setAlertedStatus((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  }
+
+  async function handleDeleteItem(id: string) {
+    if (!user) return;
+
+    await deleteDoc(doc(db, "users", user.uid, "items", id));
+
+    setAlertedStatus((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !editItem) return;
+
+    await updateDoc(doc(db, "users", user.uid, "items", editItem.id), {
+      name: editItem.name,
+      vendor: editItem.vendor,
+      daysLast: Number(editItem.daysLast),
+    });
+
+    setShowEdit(false);
+    setEditItem(null);
+  }
+
   // ============================
   // UI
   // ============================
@@ -160,12 +206,8 @@ const atItemLimit = hasItemLimit && items.length >= itemLimit;
       <h1 className="text-3xl font-bold">Items</h1>
 
       {atItemLimit && (
-        <div className="mt-4 p-4 rounded-lg bg-amber-100 text-amber-800">
-          You’ve reached your <strong>{PLANS[plan].name}</strong> plan limit
-          {hasItemLimit && ` (${itemLimit} items)`}.
-          <a href="/pricing" className="ml-2 underline font-medium">
-            Upgrade
-          </a>
+        <div className="mt-4 p-4 bg-amber-100 text-amber-800 rounded-lg">
+          Plan limit reached ({itemLimit} items)
         </div>
       )}
 
@@ -175,7 +217,7 @@ const atItemLimit = hasItemLimit && items.length >= itemLimit;
           disabled={atItemLimit}
           onClick={() => setShowAdd(true)}
           className={`px-4 py-2 rounded-lg text-white ${
-            atItemLimit ? "bg-gray-400 cursor-not-allowed" : "bg-sky-600"
+            atItemLimit ? "bg-gray-400" : "bg-sky-600"
           }`}
         >
           + Add Item
@@ -183,65 +225,87 @@ const atItemLimit = hasItemLimit && items.length >= itemLimit;
       </div>
 
       <div className="mt-6 space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="p-4 border rounded-lg flex justify-between">
-            <div>
-              <h3 className="font-semibold">{item.name}</h3>
-              <p className="text-sm text-gray-500">
-                Vendor: {item.vendor || "—"}
-              </p>
+        {items.map((item) => {
+          const status = getStatus(item);
+
+          return (
+            <div
+              key={item.id}
+              className="p-4 border rounded-lg flex justify-between"
+            >
+              <div>
+                <h3 className="font-semibold">{item.name}</h3>
+                {status && (
+                  <span className={`text-xs px-2 py-1 rounded ${status.color}`}>
+                    {status.label} • {status.daysLeft} days left
+                  </span>
+                )}
+                <p className="text-sm text-gray-500 mt-2">
+                  Vendor: {item.vendor || "—"}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleRefillItem(item.id)}
+                  className="bg-green-500 text-white px-3 py-1 rounded"
+                >
+                  Refill
+                </button>
+                <button
+                  onClick={() => {
+                    setEditItem(item);
+                    setShowEdit(true);
+                  }}
+                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteItem(item.id)}
+                  className="bg-red-500 text-white px-3 py-1 rounded"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ADD MODAL */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <form
             onSubmit={handleAddItem}
-            className="bg-white rounded-xl p-6 w-full max-w-md space-y-4"
+            className="bg-white p-6 rounded-xl space-y-4 w-full max-w-md"
           >
             <h2 className="text-xl font-semibold">Add Item</h2>
-
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Item name"
-              className="w-full border p-3 rounded-lg"
-              required
-            />
-
-            <input
-              type="number"
-              value={daysLast}
-              onChange={(e) => setDaysLast(e.target.value)}
-              placeholder="Days it lasts"
-              className="w-full border p-3 rounded-lg"
-              required
-            />
-
-            <input
-              value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
-              placeholder="Vendor"
-              className="w-full border p-3 rounded-lg"
-            />
-
+            <input className="w-full border p-3 rounded" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="w-full border p-3 rounded" type="number" placeholder="Days it lasts" value={daysLast} onChange={(e) => setDaysLast(e.target.value)} />
+            <input className="w-full border p-3 rounded" placeholder="Vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdd(false)}
-                className="w-1/2 border p-3 rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="w-1/2 bg-sky-600 text-white p-3 rounded-lg"
-              >
-                Save
-              </button>
+              <button type="button" onClick={() => setShowAdd(false)} className="w-1/2 border p-3 rounded">Cancel</button>
+              <button type="submit" className="w-1/2 bg-sky-600 text-white p-3 rounded">Save</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {showEdit && editItem && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <form
+            onSubmit={handleEditSubmit}
+            className="bg-white p-6 rounded-xl space-y-4 w-full max-w-md"
+          >
+            <h2 className="text-xl font-semibold">Edit Item</h2>
+            <input className="w-full border p-3 rounded" value={editItem.name} onChange={(e) => setEditItem({ ...editItem, name: e.target.value })} />
+            <input className="w-full border p-3 rounded" type="number" value={editItem.daysLast} onChange={(e) => setEditItem({ ...editItem, daysLast: Number(e.target.value) })} />
+            <input className="w-full border p-3 rounded" value={editItem.vendor || ""} onChange={(e) => setEditItem({ ...editItem, vendor: e.target.value })} />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowEdit(false)} className="w-1/2 border p-3 rounded">Cancel</button>
+              <button type="submit" className="w-1/2 bg-blue-600 text-white p-3 rounded">Save</button>
             </div>
           </form>
         </div>
