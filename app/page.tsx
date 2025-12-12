@@ -28,15 +28,27 @@ export default function Home() {
         transition={{ duration: 0.6 }}
       >
         <div className="mx-auto max-w-7xl px-6 flex items-center justify-between">
-          <a className="flex items-center gap-3" href="#">
-            <div>
-              <img src="../public/Logo no text.svg" alt="StockPilot Logo" className="w-8 h-8 md:hidden" />
-              <div className="font-semibold">StockPilot</div>
-              <div className="text-xs text-slate-500 -mt-1">
-                Your office, always stocked.
-              </div>
-            </div>
-          </a>
+          import Image from "next/image";
+
+<a href="/" className="flex items-center gap-3">
+  <Image
+    src="/logo.svg"
+    alt="StockPilot logo"
+    width={40}
+    height={40}
+    className="shrink-0"
+    priority
+  />
+
+  <div>
+    <div className="font-semibold text-slate-900 dark:text-white">
+      StockPilot
+    </div>
+    <div className="text-xs text-slate-500 dark:text-slate-400 -mt-1">
+      Your office, always stocked.
+    </div>
+  </div>
+</a>
 
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:text-slate-900">Features</a>
