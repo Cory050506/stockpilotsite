@@ -229,7 +229,7 @@ export default function ItemsPage() {
       {atItemLimit && (
         <div className="mt-4 p-4 rounded-lg bg-amber-100 text-amber-800 text-sm">
           You’ve reached the <strong>{PLANS[plan].name}</strong> plan limit.
-          <a href="/pricing" className="ml-2 underline font-medium">
+          <a href="/#pricing" className="ml-2 underline font-medium">
             Upgrade to add more items
           </a>
         </div>
@@ -257,7 +257,14 @@ export default function ItemsPage() {
       </div>
 
       {/* ITEMS */}
-      <div className="mt-6 space-y-3">
+      <div className="  p-4
+  border border-slate-200 dark:border-slate-700
+  rounded-lg
+  flex justify-between items-center
+  bg-white dark:bg-slate-800
+  hover:bg-slate-50 dark:hover:bg-slate-700
+  transition
+mt-6 space-y-3">
         {items.map((item) => {
           const status = getStatus(item);
 
