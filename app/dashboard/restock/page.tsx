@@ -192,7 +192,7 @@ ${user?.displayName || "—"}`;
 
             <p className="text-sm text-slate-600 dark:text-slate-400">
               You can potentially save money on your office supplies by switching
-              your vendor to <strong>Inner Space Systems</strong>.
+              your vendor to <strong>Inner Space Systems</strong>. Put ISSI as your vendor to send us an email!
             </p>
 
             <a
@@ -201,7 +201,7 @@ ${user?.displayName || "—"}`;
               rel="noopener noreferrer"
               className="inline-block w-full text-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg"
             >
-              Learn More
+              Visit Inner Space Systems' Website
             </a>
 
             <button
