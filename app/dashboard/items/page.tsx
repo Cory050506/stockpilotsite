@@ -230,7 +230,7 @@ export default function ItemsPage() {
   // UI
   // ============================
   return (
-    <motion.div className="p-10 flex-1">
+    <motion.div className="p-10 flex-1 max-w-5x1 mx-auto">
       <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
         Items
       </h1>
@@ -277,22 +277,32 @@ export default function ItemsPage() {
 
       {/* ITEMS */}
       <div className="mt-6 space-y-3">
+{items.length === 0 && (
+  <div className="p-10 border border-dashed rounded-xl text-center text-slate-500 dark:text-slate-400">
+    <p className="text-lg font-medium">No items yet</p>
+    <p className="text-sm mt-1">
+      Add your first supply to start tracking restocks.
+    </p>
+  </div>
+)}
+
         {items.map((item) => {
           const status = getStatus(item);
 
           return (
-            <div
-              key={item.id}
-              className="
-                p-4
-                border border-slate-200 dark:border-slate-700
-                rounded-lg
-                flex justify-between items-center
-                bg-white dark:bg-slate-800
-                hover:bg-slate-50 dark:hover:bg-slate-700
-                transition
-              "
-            >
+           <div
+  key={item.id}
+  className="
+    p-4
+    border border-slate-200 dark:border-slate-700
+    rounded-xl
+    flex justify-between items-center
+    bg-white dark:bg-slate-800
+    hover:shadow-sm
+    hover:bg-slate-50 dark:hover:bg-slate-700
+    transition-all
+  "
+>
               <div className="flex-1 pr-4">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {item.name}
@@ -306,28 +316,28 @@ export default function ItemsPage() {
                   </span>
                 )}
 
-                <div className="mt-3 h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      status?.label === "Due Today"
-                        ? "bg-red-500"
-                        : status?.label === "Running Low"
-                        ? "bg-amber-500"
-                        : "bg-green-500"
-                    }`}
-                    style={{ width: `${getProgress(item)}%` }}
-                  />
-                </div>
+                <div className="mt-3 h-2.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+  <div
+    className={`h-full rounded-full transition-all duration-700 ease-out ${
+      status?.label === "Due Today"
+        ? "bg-red-500"
+        : status?.label === "Running Low"
+        ? "bg-amber-500"
+        : "bg-green-500"
+    }`}
+    style={{ width: `${getProgress(item)}%` }}
+  />
+</div>
 
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                   Vendor: {item.vendor || "—"}
                 </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => handleRefillItem(item.id)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+                  className="px-3 py-1.5 rounded-md text-sm bg-green-500 hover:bg-green-600 text-white"
                 >
                   Refill
                 </button>
@@ -336,13 +346,13 @@ export default function ItemsPage() {
                     setEditItem(item);
                     setShowEdit(true);
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                  className="px-3 py-1.5 rounded-md text-sm bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDeleteItem(item.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                  className="px-3 py-1.5 rounded-md text-sm bg-red-500 hover:bg-red-600 text-white"
                 >
                   Delete
                 </button>
