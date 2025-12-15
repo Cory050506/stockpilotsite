@@ -6,13 +6,12 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { getVendorConfig } from "@/lib/vendors";
 
 type ItemDoc = {
   id: string;
   name: string;
   vendor?: string;
-  vendorEmail?: string;
-  vendorWebsite?: string;
 };
 
 export default function RestockPage() {
@@ -37,7 +36,8 @@ export default function RestockPage() {
           const data = snap.docs.map((d) => ({
             id: d.id,
             ...(d.data() as any),
-          }));
+          })) as ItemDoc[];
+
           setItems(data);
         }
       );
@@ -48,24 +48,6 @@ export default function RestockPage() {
       unsubItems?.();
     };
   }, [router]);
-
-  function buildEmail(item: ItemDoc) {
-    const subject = `Restock Request – ${item.name}`;
-    const body = `Hello${item.vendor ? " " + item.vendor : ""},
-
-We would like to place a restock order for:
-
-• Item: ${item.name}
-
-Please let us know pricing, availability, and next steps.
-
-Thank you,
-${user?.displayName || "—"}`;
-
-    return `mailto:${item.vendorEmail}?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
-  }
 
   return (
     <motion.main
@@ -78,11 +60,11 @@ ${user?.displayName || "—"}`;
       </h1>
 
       <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Quickly contact vendors or place restock orders.
+        Quickly reorder items from your vendors.
       </p>
 
       {items.length === 0 && (
-        <div className="mt-10 p-10 border border-dashed rounded-xl text-center text-slate-500">
+        <div className="mt-10 p-10 border border-dashed rounded-xl text-center text-slate-500 dark:text-slate-400">
           No items available to restock.
         </div>
       )}
@@ -98,37 +80,18 @@ ${user?.displayName || "—"}`;
                 {item.name}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Vendor: {item.vendor || "—"}
+                Vendor: {item.vendor || "Unknown"}
               </p>
             </div>
 
-            <div className="flex gap-2">
-              {item.vendorEmail && (
-                <a
-                  href={buildEmail(item)}
-                  className="px-3 py-1.5 rounded-md bg-sky-600 hover:bg-sky-700 text-white text-sm"
-                >
-                  Email Vendor
-                </a>
-              )}
-
-              {item.vendorWebsite && (
-                <a
-                  href={item.vendorWebsite}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm"
-                >
-                  Visit Website
-                </a>
-              )}
-
-              {!item.vendorEmail && !item.vendorWebsite && (
-                <span className="text-xs text-slate-400 italic">
-                  No vendor contact info
-                </span>
-              )}
-            </div>
+            <a
+              href={getVendorConfig(item.vendor).buildUrl(item.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white text-sm"
+            >
+              Reorder
+            </a>
           </div>
         ))}
       </div>
