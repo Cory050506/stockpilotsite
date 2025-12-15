@@ -45,6 +45,10 @@ export default function ItemsPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [editItem, setEditItem] = useState<ItemDoc | null>(null);
 
+  // DELETE CONFIRM
+const [showDelete, setShowDelete] = useState(false);
+const [deleteItem, setDeleteItem] = useState<ItemDoc | null>(null);
+
   // ============================
   // STATUS + PROGRESS
   // ============================
@@ -351,11 +355,14 @@ export default function ItemsPage() {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDeleteItem(item.id)}
-                  className="px-3 py-1.5 rounded-md text-sm bg-red-500 hover:bg-red-600 text-white"
-                >
-                  Delete
-                </button>
+  onClick={() => {
+    setDeleteItem(item);
+    setShowDelete(true);
+  }}
+  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+>
+  Delete
+</button>
               </div>
             </div>
           );
@@ -460,7 +467,52 @@ export default function ItemsPage() {
             </div>
           </form>
         </div>
+        
+
+
       )}
+
+      {/* DELETE CONFIRM MODAL */}
+{showDelete && deleteItem && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl w-full max-w-sm space-y-4">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        Delete item?
+      </h2>
+
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        Are you sure you want to delete{" "}
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          {deleteItem.name}
+        </span>
+        ? This action cannot be undone.
+      </p>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={() => {
+            setShowDelete(false);
+            setDeleteItem(null);
+          }}
+          className="w-1/2 border border-slate-300 dark:border-slate-600 p-3 rounded-lg"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={async () => {
+            await handleDeleteItem(deleteItem.id);
+            setShowDelete(false);
+            setDeleteItem(null);
+          }}
+          className="w-1/2 bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </motion.div>
   );
 }
