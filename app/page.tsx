@@ -288,7 +288,7 @@ export default function Home() {
           </div>
 
           <div className="mx-auto max-w-7xl px-6 mt-8 text-center text-xs text-slate-400">
-            © 2025 Restok — Built with care by <a href="https://www.issioffice.com">Inner Space Systems Inc.</a>
+            © 2025 <a href="https://www.issioffice.com">Inner Space Systems Inc.</a> — All rights reserved 
           </div>
         </footer>
       </Reveal>
