@@ -127,6 +127,40 @@ export default function RestockPage() {
     return n.includes("inner space") || n.includes("issi");
   }
 
+  function buildVendorSearchUrl(vendor: VendorDoc, itemName: string) {
+  if (!vendor.website) return null;
+
+  const site = normalizeWebsite(vendor.website)!;
+  const q = encodeURIComponent(itemName);
+  const host = site.toLowerCase();
+
+  // Known vendors (extend anytime)
+  if (host.includes("amazon")) {
+    return `https://www.amazon.com/s?k=${q}`;
+  }
+
+  if (host.includes("walmart")) {
+    return `https://www.walmart.com/search?q=${q}`;
+  }
+
+  if (host.includes("staples")) {
+    return `https://www.staples.com/search?query=${q}`;
+  }
+
+  if (host.includes("officedepot")) {
+    return `https://www.officedepot.com/catalog/search.do?query=${q}`;
+  }
+
+  if (host.includes("costco")) {
+    return `https://www.costco.com/CatalogSearch?keyword=${q}`;
+  }
+
+  // Fallback: Google site search
+  return `https://www.google.com/search?q=site:${encodeURIComponent(
+    new URL(site).hostname
+  )}+${q}`;
+}
+
   function normalizeWebsite(url?: string) {
   if (!url) return null;
 
@@ -274,12 +308,12 @@ ${user?.displayName || "—"}`;
       </a>
     ) : vendor.website ? (
       <a
-        href={normalizeWebsite(vendor.website)!}
+        href={buildVendorSearchUrl(vendor, item.name)!}
         target="_blank"
         rel="noopener noreferrer"
         className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
       >
-        Visit Website
+        Search for item
       </a>
     ) : (
       <span className="text-xs italic text-slate-400">
