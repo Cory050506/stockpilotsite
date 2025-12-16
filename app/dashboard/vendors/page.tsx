@@ -79,30 +79,37 @@ export default function VendorsPage() {
   // SAVE VENDOR
   // -------------------------
   async function handleSaveVendor(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
+  e.preventDefault();
 
-    const payload = {
-      name: name.trim(),
-      email: email.trim() || null,
-      website: website.trim() || null,
-      updatedAt: serverTimestamp(),
-    };
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
 
+  const payload = {
+    name: name.trim(),
+    email: email.trim() || null,
+    website: website.trim() || null,
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
     if (editingVendor) {
       await updateDoc(
-        doc(db, "users", user.uid, "vendors", editingVendor.id),
+        doc(db, "users", uid, "vendors", editingVendor.id),
         payload
       );
     } else {
-      await addDoc(collection(db, "users", user.uid, "vendors"), {
+      await addDoc(collection(db, "users", uid, "vendors"), {
         ...payload,
         createdAt: serverTimestamp(),
       });
     }
 
     resetModal();
+  } catch (err) {
+    console.error("Failed to save vendor:", err);
+    alert("Failed to save vendor. Check console.");
   }
+}
 
   function resetModal() {
     setShowModal(false);
@@ -118,10 +125,13 @@ export default function VendorsPage() {
   async function handleDeleteVendor(vendor: VendorDoc) {
     if (!user) return;
 
+    const uid = auth.currentUser?.uid;
+if (!uid) return;
+
     // Prevent deleting vendors still used by items
     const itemsSnap = await getDocs(
       query(
-        collection(db, "users", user.uid, "items"),
+        collection(db, "users", uid, "items"),
         where("vendorId", "==", vendor.id)
       )
     );

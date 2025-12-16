@@ -127,6 +127,18 @@ export default function RestockPage() {
     return n.includes("inner space") || n.includes("issi");
   }
 
+  function normalizeWebsite(url?: string) {
+  if (!url) return null;
+
+  // If already absolute, return as-is
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // Otherwise, assume https
+  return `https://${url}`;
+}
+
   function buildInnerSpaceEmail(item: ItemDoc) {
     const subject = `Restock Request – ${item.name}`;
     const body = `Hello Inner Space Systems,
@@ -182,7 +194,7 @@ ${user?.displayName || "—"}`;
       {isProOrHigher && (
         <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700 flex justify-between items-center">
           <p className="text-sm text-sky-800 dark:text-sky-200">
-            💡 Save money by switching to Inner Space Systems
+            💡 Want to potentially save money on your office supplies?
           </p>
           <button
             onClick={() => setShowSavingsModal(true)}
@@ -262,7 +274,7 @@ ${user?.displayName || "—"}`;
       </a>
     ) : vendor.website ? (
       <a
-        href={vendor.website}
+        href={normalizeWebsite(vendor.website)!}
         target="_blank"
         rel="noopener noreferrer"
         className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
@@ -290,8 +302,7 @@ ${user?.displayName || "—"}`;
             </h2>
 
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Switch your vendor to <strong>Inner Space Systems</strong> and email
-              orders directly from Restok.
+              Want to potentially save money on your office supplies? Switch your vendor to <strong>Inner Space Systems</strong> to send us an email!
             </p>
 
             <a
@@ -300,7 +311,7 @@ ${user?.displayName || "—"}`;
               rel="noopener noreferrer"
               className="block text-center bg-sky-600 hover:bg-sky-700 text-white py-2 rounded"
             >
-              Visit Inner Space Systems
+              Visit Inner Space Systems's Website
             </a>
 
             <button
