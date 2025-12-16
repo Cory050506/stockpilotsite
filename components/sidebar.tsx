@@ -24,7 +24,7 @@ export default function Sidebar() {
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
       >
-        StockPilot
+        Restok
       </motion.h1>
 
       {/* Navigation */}
@@ -45,7 +45,14 @@ export default function Sidebar() {
           📦 Items
         </motion.a>
 
-        {/* NEW: RESTOCK */}
+        <motion.a
+          href="/dashboard/vendors"
+          whileHover={{ x: 4 }}
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          🏪 Vendors
+        </motion.a>
+
         <motion.a
           href="/dashboard/restock"
           whileHover={{ x: 4 }}

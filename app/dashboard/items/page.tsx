@@ -22,12 +22,20 @@ import { PLANS } from "@/lib/plans";
 type ItemDoc = {
   id: string;
   name: string;
-  vendor?: string;
+  vendorId?: string;   // ✅ NEW (preferred)
+  vendor?: string;     // ⚠️ legacy fallback
   daysLast: number;
-  notes?: string;        // ✅ NEW
-  category?: string;     // 🧱 future
-  locationId?: string;   // 🧱 future (Pro+)
+  notes?: string;
+  category?: string;
+  locationId?: string;
   createdAt?: any;
+};
+
+type VendorDoc = {
+  id: string;
+  name: string;
+  email?: string | null;
+  website?: string | null;
 };
 
 export default function ItemsPage() {
@@ -39,6 +47,9 @@ export default function ItemsPage() {
   const [items, setItems] = useState<ItemDoc[]>([]);
   const [alertedStatus, setAlertedStatus] =
     useState<Record<string, "low" | "out">>({});
+
+  const [vendors, setVendors] = useState<VendorDoc[]>([]);
+const [vendorId, setVendorId] = useState("");  
 
   // ADD
   const [showAdd, setShowAdd] = useState(false);
@@ -89,6 +100,14 @@ const [deleteItem, setDeleteItem] = useState<ItemDoc | null>(null);
     };
   }
 
+  function getVendorName(item: ItemDoc) {
+  if (item.vendorId) {
+    const v = vendors.find((v) => v.id === item.vendorId);
+    return v?.name || "—";
+  }
+  return item.vendor || "—"; // legacy fallback
+}
+
   function getProgress(item: ItemDoc) {
     if (!item.createdAt) return 0;
 
@@ -115,6 +134,18 @@ const [deleteItem, setDeleteItem] = useState<ItemDoc | null>(null);
         router.push("/login");
         return;
       }
+
+      onSnapshot(
+  collection(db, "users", currentUser.uid, "vendors"),
+  (snap) => {
+    const vendorData = snap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as any),
+    })) as VendorDoc[];
+
+    setVendors(vendorData);
+  }
+);
 
       setUser(currentUser);
 
@@ -204,25 +235,27 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
     e.preventDefault();
     if (!user || atItemLimit) return;
 
-    await addDoc(collection(db, "users", user.uid, "items"), {
-      name,
-      vendor,
-      daysLast: Number(daysLast),
-      createdAt: serverTimestamp(),
-    });
+   await addDoc(collection(db, "users", user.uid, "items"), {
+  name,
+  vendorId: vendorId || null,
+  daysLast: Number(daysLast),
+  createdAt: serverTimestamp(),
+});
 
     setName("");
     setDaysLast("");
-    setVendor("");
+    setVendorId("");
     setShowAdd(false);
   }
 
   async function handleRefillItem(id: string) {
-    if (!user) return;
+    if (!user || !editItem) return;
 
-    await updateDoc(doc(db, "users", user.uid, "items", id), {
-      createdAt: serverTimestamp(),
-    });
+    await updateDoc(doc(db, "users", user.uid, "items", editItem.id), {
+  name: editItem.name,
+  vendorId: editItem.vendorId || null,
+  daysLast: Number(editItem.daysLast),
+});
 
     setAlertedStatus((prev) => {
       const copy = { ...prev };
@@ -354,7 +387,7 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
 </div>
 
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                  Vendor: {item.vendor || "—"}
+                  Vendor: {getVendorName(item)}
                 </p>
               </div>
 
@@ -412,12 +445,18 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
               onChange={(e) => setDaysLast(e.target.value)}
               required
             />
-            <input
-              className="w-full border p-3 rounded"
-              placeholder="Vendor"
-              value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
-            />
+           <select
+  className="w-full border p-3 rounded"
+  value={vendorId}
+  onChange={(e) => setVendorId(e.target.value)}
+>
+  <option value="">Select vendor (optional)</option>
+  {vendors.map((v) => (
+    <option key={v.id} value={v.id}>
+      {v.name}
+    </option>
+  ))}
+</select>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -463,13 +502,20 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
                 })
               }
             />
-            <input
-              className="w-full border p-3 rounded"
-              value={editItem.vendor || ""}
-              onChange={(e) =>
-                setEditItem({ ...editItem, vendor: e.target.value })
-              }
-            />
+            <select
+  className="w-full border p-3 rounded"
+  value={editItem.vendorId || ""}
+  onChange={(e) =>
+    setEditItem({ ...editItem, vendorId: e.target.value })
+  }
+>
+  <option value="">Select vendor</option>
+  {vendors.map((v) => (
+    <option key={v.id} value={v.id}>
+      {v.name}
+    </option>
+  ))}
+</select>
             <div className="flex gap-2">
               <button
                 type="button"

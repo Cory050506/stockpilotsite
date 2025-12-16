@@ -2,17 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../../lib/firebase";
-import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { getVendorConfig } from "@/lib/vendors";
 import { PLANS } from "@/lib/plans";
 
 type ItemDoc = {
   id: string;
   name: string;
-  vendor?: string;
+  vendorId?: string;
+};
+
+type VendorDoc = {
+  id: string;
+  name: string;
+  email?: string;
+  website?: string;
 };
 
 export default function RestockPage() {
@@ -20,74 +31,81 @@ export default function RestockPage() {
 
   const [user, setUser] = useState<any>(null);
   const [items, setItems] = useState<ItemDoc[]>([]);
+  const [vendors, setVendors] = useState<Record<string, VendorDoc>>({});
   const [plan, setPlan] = useState<keyof typeof PLANS>("basic");
-  const [orgId, setOrgId] = useState<string | null>(null);
   const [showSavingsModal, setShowSavingsModal] = useState(false);
 
   const isProOrHigher =
     plan === "pro" || plan === "premium" || plan === "enterprise";
 
   // ----------------------------
-  // AUTH + LOAD ITEMS
+  // AUTH + LOAD DATA
   // ----------------------------
-useEffect(() => {
-  let unsubItems: (() => void) | undefined;
-  let unsubUser: (() => void) | undefined;
+  useEffect(() => {
+    let unsubItems: (() => void) | undefined;
+    let unsubVendors: (() => void) | undefined;
+    let unsubUser: (() => void) | undefined;
 
-  const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-
-    setUser(currentUser);
-
-    // Load plan
-    const userRef = doc(db, "users", currentUser.uid);
-
-unsubUser = onSnapshot(userRef, (userSnap) => {
-  const data = userSnap.data();
-
-  if (!data?.orgId) return;
-
-  setOrgId(data.orgId);
-
-  const orgRef = doc(db, "organizations", data.orgId);
-
-  onSnapshot(orgRef, (orgSnap) => {
-    const rawPlan = orgSnap.data()?.plan;
-    setPlan(rawPlan && rawPlan in PLANS ? rawPlan : "basic");
-  });
-});
-
-    // Load items
-    unsubItems = onSnapshot(
-      collection(db, "users", currentUser.uid, "items"),
-      (snap) => {
-        const data = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        })) as ItemDoc[];
-
-        setItems(data);
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        router.push("/login");
+        return;
       }
-    );
-  });
 
-  return () => {
-    unsubAuth();
-    unsubItems?.();
-    unsubUser?.();
-  };
-}, [router]);
+      setUser(currentUser);
+
+      // Load org plan
+      const userRef = doc(db, "users", currentUser.uid);
+      unsubUser = onSnapshot(userRef, (snap) => {
+        const orgId = snap.data()?.orgId;
+        if (!orgId) return;
+
+        onSnapshot(doc(db, "organizations", orgId), (orgSnap) => {
+          const rawPlan = orgSnap.data()?.plan;
+          setPlan(rawPlan && rawPlan in PLANS ? rawPlan : "basic");
+        });
+      });
+
+      // Load vendors
+      unsubVendors = onSnapshot(
+        collection(db, "users", currentUser.uid, "vendors"),
+        (snap) => {
+          const map: Record<string, VendorDoc> = {};
+          snap.docs.forEach((d) => {
+            map[d.id] = { id: d.id, ...(d.data() as any) };
+          });
+          setVendors(map);
+        }
+      );
+
+      // Load items
+      unsubItems = onSnapshot(
+        collection(db, "users", currentUser.uid, "items"),
+        (snap) => {
+          const data = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any),
+          })) as ItemDoc[];
+          setItems(data);
+        }
+      );
+    });
+
+    return () => {
+      unsubAuth();
+      unsubItems?.();
+      unsubVendors?.();
+      unsubUser?.();
+    };
+  }, [router]);
 
   // ----------------------------
-  // INNER SPACE DETECTION
+  // HELPERS
   // ----------------------------
-  function isInnerSpaceVendor(vendor?: string) {
-    if (!vendor) return false;
-    const v = vendor.toLowerCase();
-    return v.includes("inner space") || v.includes("issi");
+  function isInnerSpaceVendor(v?: VendorDoc) {
+    if (!v?.name) return false;
+    const n = v.name.toLowerCase();
+    return n.includes("inner space") || n.includes("issi");
   }
 
   function buildInnerSpaceEmail(item: ItemDoc) {
@@ -98,12 +116,28 @@ I would like to place a restock order for the following item:
 
 Item: ${item.name}
 
-This request was sent from the Restok app.
+This request was sent from the Restok app (getrestok.com).
 
 Thank you,
 ${user?.displayName || "—"}`;
 
     return `mailto:sales@issioffice.com?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  }
+
+  function buildVendorEmail(vendor: VendorDoc, item: ItemDoc) {
+    const subject = `Restock Request – ${item.name}`;
+    const body = `Hello ${vendor.name},
+
+I would like to place a restock order for:
+
+Item: ${item.name}
+
+Thank you,
+${user?.displayName || "—"}`;
+
+    return `mailto:${vendor.email}?subject=${encodeURIComponent(
       subject
     )}&body=${encodeURIComponent(body)}`;
   }
@@ -117,23 +151,21 @@ ${user?.displayName || "—"}`;
       initial={{ opacity: 0.5 }}
       animate={{ opacity: 1 }}
     >
-      <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-        Restock
-      </h1>
+      <h1 className="text-3xl font-bold">Restock</h1>
 
       <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Quickly reorder items from your vendors.
+        Quickly reorder items from your saved vendors.
       </p>
 
       {/* PRO+ UPSELL */}
       {isProOrHigher && (
-        <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700 flex items-center justify-between">
-          <p className="text-sm text-sky-800 dark:text-sky-200">
-            💡 Would you like to potentially save money on your office supplies?
+        <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border flex justify-between">
+          <p className="text-sm">
+            💡 Save money by switching to Inner Space Systems
           </p>
           <button
             onClick={() => setShowSavingsModal(true)}
-            className="px-3 py-1.5 rounded-md bg-sky-600 hover:bg-sky-700 text-white text-sm"
+            className="px-3 py-1.5 bg-sky-600 text-white rounded-md"
           >
             Learn more
           </button>
@@ -141,72 +173,90 @@ ${user?.displayName || "—"}`;
       )}
 
       {items.length === 0 && (
-        <div className="mt-10 p-10 border border-dashed rounded-xl text-center text-slate-500 dark:text-slate-400">
+        <div className="mt-10 p-10 border border-dashed rounded-xl text-center">
           No items available to restock.
         </div>
       )}
 
       <div className="mt-6 space-y-4">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 flex justify-between items-center"
-          >
-            <div>
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                {item.name}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Vendor: {item.vendor || "Unknown"}
-              </p>
-            </div>
+        {items.map((item) => {
+          const vendor = item.vendorId
+            ? vendors[item.vendorId]
+            : undefined;
 
-            {isInnerSpaceVendor(item.vendor) ? (
-              <a
-                href={buildInnerSpaceEmail(item)}
-                className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
-              >
-                Email Inner Space
-              </a>
-            ) : (
-              <a
-                href={getVendorConfig(item.vendor).buildUrl(item.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white text-sm"
-              >
-                Reorder
-              </a>
-            )}
-          </div>
-        ))}
+          return (
+            <div
+              key={item.id}
+              className="p-4 rounded-xl border bg-white dark:bg-slate-800 flex justify-between items-center"
+            >
+              <div>
+                <h3 className="font-semibold">{item.name}</h3>
+                <p className="text-sm text-slate-500">
+                  Vendor: {vendor?.name || "Not set"}
+                </p>
+              </div>
+
+              {!vendor ? (
+                <span className="text-xs italic text-slate-400">
+                  No vendor linked
+                </span>
+              ) : isInnerSpaceVendor(vendor) ? (
+                <a
+                  href={buildInnerSpaceEmail(item)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md"
+                >
+                  Email Inner Space
+                </a>
+              ) : vendor.email ? (
+                <a
+                  href={buildVendorEmail(vendor, item)}
+                  className="px-4 py-2 bg-sky-600 text-white rounded-md"
+                >
+                  Email Vendor
+                </a>
+              ) : vendor.website ? (
+                <a
+                  href={vendor.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-sky-600 text-white rounded-md"
+                >
+                  Visit Website
+                </a>
+              ) : (
+                <span className="text-xs italic text-slate-400">
+                  No contact info
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* SAVINGS MODAL */}
       {showSavingsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl w-full max-w-md space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-md">
+            <h2 className="text-lg font-semibold">
               Save on Office Supplies
             </h2>
 
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              You can potentially save money on your office supplies by switching
-              your vendor to <strong>Inner Space Systems</strong>. Put ISSI as your vendor to send us an email!
+            <p className="text-sm mt-2">
+              Switch your vendor to <strong>Inner Space Systems</strong> and
+              email orders directly from Restok.
             </p>
 
             <a
               href="https://www.issioffice.com/office-supplies"
               target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block w-full text-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg"
+              className="block mt-4 text-center bg-sky-600 text-white py-2 rounded"
             >
-              Visit Inner Space Systems' Website
+              Visit Inner Space Systems's Website
             </a>
 
             <button
               onClick={() => setShowSavingsModal(false)}
-              className="w-full border border-slate-300 dark:border-slate-600 px-4 py-2 rounded-lg"
+              className="mt-3 w-full border py-2 rounded"
             >
               Close
             </button>
