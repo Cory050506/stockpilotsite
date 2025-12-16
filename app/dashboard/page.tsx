@@ -28,6 +28,15 @@ export default function DashboardHome() {
     runningLow: 0,
     dueToday: 0,
   });
+  const [showAttentionModal, setShowAttentionModal] = useState(false);
+const [attentionItems, setAttentionItems] = useState<ItemDoc[]>([]);
+
+type ItemDoc = {
+  id: string;
+  name: string;
+  daysLast: number;
+  createdAt?: any;
+};
 
   // 🌙 Dark mode detection (CLIENT ONLY)
   const [isDark, setIsDark] = useState(false);
@@ -70,25 +79,44 @@ export default function DashboardHome() {
 
   // FETCH ITEMS
   useEffect(() => {
-    if (!user) return;
+  if (!user) return;
 
-    const unsubItems = onSnapshot(
-      collection(db, "users", user.uid, "items"),
-      (snap) => {
-        const data = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+  const unsubItems = onSnapshot(
+    collection(db, "users", user.uid, "items"),
+    (snap) => {
+      const data = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      })) as ItemDoc[];
 
-        setItems(data);
-        calculateStats(data);
+      setItems(data);
+      calculateStats(data);
+
+      // 🔔 ATTENTION CHECK (once per session)
+      const needsAttentionItems = data.filter(needsAttention);
+      const dismissed = sessionStorage.getItem("restok_attention_dismissed");
+
+      if (needsAttentionItems.length > 0 && !dismissed) {
+        setAttentionItems(needsAttentionItems);
+        setShowAttentionModal(true);
       }
-    );
+    }
+  );
 
-    return () => unsubItems();
-  }, [user]);
+  return () => unsubItems();
+}, [user]);
 
   // CALCULATE STATS
+  function needsAttention(item: ItemDoc) {
+  if (!item.createdAt) return false;
+
+  const created = item.createdAt.toDate();
+  const diffDays = Math.floor(
+    (Date.now() - created.getTime()) / 86400000
+  );
+
+  return item.daysLast - diffDays <= 3;
+}
   function calculateStats(items: any[]) {
     const today = new Date();
     let runningLow = 0;
@@ -210,6 +238,58 @@ export default function DashboardHome() {
           </ResponsiveContainer>
         </div>
       </div>
+      {/* ========================== */}
+{/*   ATTENTION POPUP MODAL   */}
+{/* ========================== */}
+{showAttentionModal && (
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-lg w-full space-y-4 shadow-xl">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        🔔 Take a look at these items
+      </h2>
+
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        Some supplies may need restocking soon.
+      </p>
+
+      <div className="space-y-2 max-h-60 overflow-y-auto">
+        {attentionItems.map((item) => (
+          <div
+            key={item.id}
+            className="flex justify-between items-center text-sm p-2 rounded bg-slate-100 dark:bg-slate-700"
+          >
+            <span className="font-medium">{item.name}</span>
+            <span className="text-xs text-amber-600 dark:text-amber-300">
+              Needs attention
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={() => {
+            sessionStorage.setItem("restok_attention_dismissed", "true");
+            setShowAttentionModal(false);
+          }}
+          className="w-1/2 border border-slate-300 dark:border-slate-600 py-2 rounded-md"
+        >
+          Later
+        </button>
+
+        <button
+          onClick={() => {
+            sessionStorage.setItem("restok_attention_dismissed", "true");
+            router.push("/dashboard/restock");
+          }}
+          className="w-1/2 bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-md"
+        >
+          Review items
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </motion.main>
   );
 }
