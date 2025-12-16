@@ -55,7 +55,7 @@ const [vendorId, setVendorId] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [daysLast, setDaysLast] = useState("");
-  const [vendor, setVendor] = useState("");
+  
 
   // EDIT
   const [showEdit, setShowEdit] = useState(false);
@@ -249,20 +249,18 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
   }
 
   async function handleRefillItem(id: string) {
-    if (!user || !editItem) return;
+  if (!user) return;
 
-    await updateDoc(doc(db, "users", user.uid, "items", editItem.id), {
-  name: editItem.name,
-  vendorId: editItem.vendorId || null,
-  daysLast: Number(editItem.daysLast),
-});
+  await updateDoc(doc(db, "users", user.uid, "items", id), {
+    createdAt: serverTimestamp(),
+  });
 
-    setAlertedStatus((prev) => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
-  }
+  setAlertedStatus((prev) => {
+    const copy = { ...prev };
+    delete copy[id];
+    return copy;
+  });
+}
 
   async function handleDeleteItem(id: string) {
     if (!user) return;
@@ -274,10 +272,10 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
     if (!user || !editItem) return;
 
     await updateDoc(doc(db, "users", user.uid, "items", editItem.id), {
-      name: editItem.name,
-      vendor: editItem.vendor,
-      daysLast: Number(editItem.daysLast),
-    });
+  name: editItem.name,
+  vendorId: editItem.vendorId || null,
+  daysLast: Number(editItem.daysLast),
+});
 
     setShowEdit(false);
     setEditItem(null);
@@ -445,12 +443,19 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
               onChange={(e) => setDaysLast(e.target.value)}
               required
             />
-           <select
+           
+
+<select
   className="input"
   value={vendorId}
   onChange={(e) => setVendorId(e.target.value)}
+  disabled={vendors.length === 0}
 >
-  <option value="">Select vendor (optional)</option>
+  <option value="">
+    {vendors.length === 0
+      ? "No vendors yet — add one first"
+      : "Select vendor (optional)"}
+  </option>
   {vendors.map((v) => (
     <option key={v.id} value={v.id}>
       {v.name}

@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "../../../lib/firebase";
-import {
-  collection,
-  onSnapshot,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { collection, onSnapshot, doc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -16,14 +11,14 @@ import { PLANS } from "@/lib/plans";
 type ItemDoc = {
   id: string;
   name: string;
-  vendorId?: string;
+  vendorId?: string | null;
 };
 
 type VendorDoc = {
   id: string;
   name: string;
-  email?: string;
-  website?: string;
+  email?: string | null;
+  website?: string | null;
 };
 
 export default function RestockPage() {
@@ -45,8 +40,9 @@ export default function RestockPage() {
     let unsubItems: (() => void) | undefined;
     let unsubVendors: (() => void) | undefined;
     let unsubUser: (() => void) | undefined;
+    let unsubOrg: (() => void) | undefined;
 
-    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         router.push("/login");
         return;
@@ -54,19 +50,22 @@ export default function RestockPage() {
 
       setUser(currentUser);
 
-      // Load org plan
-      const userRef = doc(db, "users", currentUser.uid);
-      unsubUser = onSnapshot(userRef, (snap) => {
-        const orgId = snap.data()?.orgId;
+      // USER → ORG → PLAN
+      unsubUser = onSnapshot(doc(db, "users", currentUser.uid), (userSnap) => {
+        const orgId = userSnap.data()?.orgId;
         if (!orgId) return;
 
-        onSnapshot(doc(db, "organizations", orgId), (orgSnap) => {
-          const rawPlan = orgSnap.data()?.plan;
-          setPlan(rawPlan && rawPlan in PLANS ? rawPlan : "basic");
-        });
+        unsubOrg?.();
+        unsubOrg = onSnapshot(
+          doc(db, "organizations", orgId),
+          (orgSnap) => {
+            const rawPlan = orgSnap.data()?.plan;
+            setPlan(rawPlan && rawPlan in PLANS ? rawPlan : "basic");
+          }
+        );
       });
 
-      // Load vendors
+      // VENDORS
       unsubVendors = onSnapshot(
         collection(db, "users", currentUser.uid, "vendors"),
         (snap) => {
@@ -78,7 +77,7 @@ export default function RestockPage() {
         }
       );
 
-      // Load items
+      // ITEMS
       unsubItems = onSnapshot(
         collection(db, "users", currentUser.uid, "items"),
         (snap) => {
@@ -96,6 +95,7 @@ export default function RestockPage() {
       unsubItems?.();
       unsubVendors?.();
       unsubUser?.();
+      unsubOrg?.();
     };
   }, [router]);
 
@@ -112,11 +112,11 @@ export default function RestockPage() {
     const subject = `Restock Request – ${item.name}`;
     const body = `Hello Inner Space Systems,
 
-I would like to place a restock order for the following item:
+I would like to place a restock order for:
 
 Item: ${item.name}
 
-This request was sent from the Restok app (getrestok.com).
+This request was sent from Restok (getrestok.com).
 
 Thank you,
 ${user?.displayName || "—"}`;
@@ -151,21 +151,23 @@ ${user?.displayName || "—"}`;
       initial={{ opacity: 0.5 }}
       animate={{ opacity: 1 }}
     >
-      <h1 className="text-3xl font-bold">Restock</h1>
+      <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+        Restock
+      </h1>
 
       <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Quickly reorder items from your saved vendors.
+        Reorder items using your saved vendors.
       </p>
 
       {/* PRO+ UPSELL */}
       {isProOrHigher && (
-        <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border flex justify-between">
-          <p className="text-sm">
+        <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700 flex justify-between items-center">
+          <p className="text-sm text-sky-800 dark:text-sky-200">
             💡 Save money by switching to Inner Space Systems
           </p>
           <button
             onClick={() => setShowSavingsModal(true)}
-            className="px-3 py-1.5 bg-sky-600 text-white rounded-md"
+            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
           >
             Learn more
           </button>
@@ -173,7 +175,7 @@ ${user?.displayName || "—"}`;
       )}
 
       {items.length === 0 && (
-        <div className="mt-10 p-10 border border-dashed rounded-xl text-center">
+        <div className="mt-10 p-10 border border-dashed rounded-xl text-center text-slate-500 dark:text-slate-400">
           No items available to restock.
         </div>
       )}
@@ -187,11 +189,13 @@ ${user?.displayName || "—"}`;
           return (
             <div
               key={item.id}
-              className="p-4 rounded-xl border bg-white dark:bg-slate-800 flex justify-between items-center"
+              className="p-4 rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 flex justify-between items-center"
             >
               <div>
-                <h3 className="font-semibold">{item.name}</h3>
-                <p className="text-sm text-slate-500">
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                  {item.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Vendor: {vendor?.name || "Not set"}
                 </p>
               </div>
@@ -203,14 +207,14 @@ ${user?.displayName || "—"}`;
               ) : isInnerSpaceVendor(vendor) ? (
                 <a
                   href={buildInnerSpaceEmail(item)}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-md"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm"
                 >
                   Email Inner Space
                 </a>
               ) : vendor.email ? (
                 <a
                   href={buildVendorEmail(vendor, item)}
-                  className="px-4 py-2 bg-sky-600 text-white rounded-md"
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
                 >
                   Email Vendor
                 </a>
@@ -219,7 +223,7 @@ ${user?.displayName || "—"}`;
                   href={vendor.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-sky-600 text-white rounded-md"
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
                 >
                   Visit Website
                 </a>
@@ -235,28 +239,29 @@ ${user?.displayName || "—"}`;
 
       {/* SAVINGS MODAL */}
       {showSavingsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-md">
-            <h2 className="text-lg font-semibold">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-md space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               Save on Office Supplies
             </h2>
 
-            <p className="text-sm mt-2">
-              Switch your vendor to <strong>Inner Space Systems</strong> and
-              email orders directly from Restok.
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Switch your vendor to <strong>Inner Space Systems</strong> and email
+              orders directly from Restok.
             </p>
 
             <a
               href="https://www.issioffice.com/office-supplies"
               target="_blank"
-              className="block mt-4 text-center bg-sky-600 text-white py-2 rounded"
+              rel="noopener noreferrer"
+              className="block text-center bg-sky-600 hover:bg-sky-700 text-white py-2 rounded"
             >
-              Visit Inner Space Systems's Website
+              Visit Inner Space Systems
             </a>
 
             <button
               onClick={() => setShowSavingsModal(false)}
-              className="mt-3 w-full border py-2 rounded"
+              className="w-full border border-slate-300 dark:border-slate-600 py-2 rounded"
             >
               Close
             </button>
