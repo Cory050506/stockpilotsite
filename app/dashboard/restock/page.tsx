@@ -72,6 +72,20 @@ const [restockingItem, setRestockingItem] = useState<ItemDoc | null>(null);
     let unsubUser: (() => void) | undefined;
     let unsubOrg: (() => void) | undefined;
 
+    // ----------------------------
+// RESTOCK CONFIRM TRIGGER
+// ----------------------------
+useEffect(() => {
+  if (!focusedItemId) return;
+  if (!items.length) return;
+
+  const item = items.find((i) => i.id === focusedItemId);
+  if (!item) return;
+
+  setRestockingItem(item);
+  setShowRestockConfirm(true);
+}, [focusedItemId, items]);
+
     const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         router.push("/login");
@@ -115,15 +129,7 @@ const [restockingItem, setRestockingItem] = useState<ItemDoc | null>(null);
           setItems(data);
         }
       );
-      useEffect(() => {
-  if (!focusedItemId || items.length === 0) return;
-
-  const item = items.find((i) => i.id === focusedItemId);
-  if (!item) return;
-
-  setRestockingItem(item);
-  setShowRestockConfirm(true);
-}, [focusedItemId, items]);
+      
     });
 
     const searchParams =
