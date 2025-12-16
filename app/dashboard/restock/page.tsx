@@ -8,10 +8,27 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { PLANS } from "@/lib/plans";
 
+import { updateDoc } from "firebase/firestore";
+import { user } from "firebase-functions/v1/auth";
+
+async function setReorderMethod(
+  itemId: string,
+  method: "email" | "website"
+) {
+  const uid = auth.currentUser?.uid;
+if (!uid) return;
+
+await updateDoc(
+  doc(db, "users", uid, "items", itemId),
+  { reorderMethod: method }
+);
+}
+
 type ItemDoc = {
   id: string;
   name: string;
   vendorId?: string | null;
+  reorderMethod?: "email" | "website";
 };
 
 type VendorDoc = {
@@ -32,6 +49,8 @@ export default function RestockPage() {
 
   const isProOrHigher =
     plan === "pro" || plan === "premium" || plan === "enterprise";
+
+    
 
   // ----------------------------
   // AUTH + LOAD DATA
@@ -201,37 +220,62 @@ ${user?.displayName || "—"}`;
               </div>
 
               {!vendor ? (
-                <span className="text-xs italic text-slate-400">
-                  No vendor linked
-                </span>
-              ) : isInnerSpaceVendor(vendor) ? (
-                <a
-                  href={buildInnerSpaceEmail(item)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm"
-                >
-                  Email Inner Space
-                </a>
-              ) : vendor.email ? (
-                <a
-                  href={buildVendorEmail(vendor, item)}
-                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
-                >
-                  Email Vendor
-                </a>
-              ) : vendor.website ? (
-                <a
-                  href={vendor.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
-                >
-                  Visit Website
-                </a>
-              ) : (
-                <span className="text-xs italic text-slate-400">
-                  No contact info
-                </span>
-              )}
+  <span className="text-xs italic text-slate-400">
+    No vendor linked
+  </span>
+) : isInnerSpaceVendor(vendor) ? (
+  <a
+    href={buildInnerSpaceEmail(item)}
+    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm"
+  >
+    Email Inner Space
+  </a>
+) : (
+  <div className="flex items-center gap-3">
+    {/* METHOD TOGGLE (only if both exist) */}
+    {vendor.email && vendor.website && (
+      <div className="flex rounded-md overflow-hidden border border-slate-300 dark:border-slate-600">
+        {(["email", "website"] as const).map((method) => (
+          <button
+            key={method}
+            onClick={() => setReorderMethod(item.id, method)}
+            className={`px-3 py-1 text-xs ${
+              item.reorderMethod === method ||
+              (!item.reorderMethod && method === "email")
+                ? "bg-sky-600 text-white"
+                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+            }`}
+          >
+            {method === "email" ? "Email" : "Website"}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {/* ACTION BUTTON */}
+    {((item.reorderMethod ?? "email") === "email" && vendor.email) ? (
+      <a
+        href={buildVendorEmail(vendor, item)}
+        className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
+      >
+        Email Vendor
+      </a>
+    ) : vendor.website ? (
+      <a
+        href={vendor.website}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
+      >
+        Visit Website
+      </a>
+    ) : (
+      <span className="text-xs italic text-slate-400">
+        No contact info
+      </span>
+    )}
+  </div>
+)}
             </div>
           );
         })}
