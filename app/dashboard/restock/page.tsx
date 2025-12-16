@@ -37,10 +37,18 @@ type VendorDoc = {
 export default function RestockPage() {
   const router = useRouter();
 
-  const searchParams =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
+  // ----------------------------
+// REVIEW ITEMS FROM DASHBOARD
+// ----------------------------
+const searchParams =
+  typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null;
+
+const reviewIds: string[] =
+  searchParams?.get("review")?.split(",").filter(Boolean) ?? [];
+
+  
 
   const focusedItemId = searchParams?.get("itemId");
 
@@ -117,6 +125,14 @@ const [restockingItem, setRestockingItem] = useState<ItemDoc | null>(null);
   setShowRestockConfirm(true);
 }, [focusedItemId, items]);
     });
+
+    const searchParams =
+  typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null;
+
+const reviewIds =
+  searchParams?.get("review")?.split(",") ?? [];
 
 
     return () => {
@@ -236,20 +252,27 @@ ${user?.displayName || "—"}`;
             : undefined;
 
           return (
-            <div
-              key={item.id}
-              className={`p-4 rounded-xl border flex justify-between items-center transition
-                ${
-                  focusedItemId === item.id
-                    ? "bg-sky-50 dark:bg-sky-900/30 border-sky-400"
-                    : "bg-white dark:bg-slate-800 dark:border-slate-700"
-                }
-              `}
-            >
+           <div
+  key={item.id}
+  className={`p-4 rounded-xl border flex justify-between items-center transition
+    ${
+      reviewIds.includes(item.id)
+        ? "bg-amber-50 dark:bg-amber-900/30 border-amber-400"
+        : "bg-white dark:bg-slate-800 dark:border-slate-700"
+    }
+  `}
+>
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                   {item.name}
                 </h3>
+                {reviewIds.includes(item.id) && (
+  <span className="inline-block mt-1 text-xs px-2 py-1 rounded
+    bg-amber-200 dark:bg-amber-800
+    text-amber-900 dark:text-amber-100">
+    Needs attention
+  </span>
+)}
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Vendor: {vendor?.name || "Not set"}
                 </p>

@@ -30,6 +30,7 @@ export default function DashboardHome() {
   });
   const [showAttentionModal, setShowAttentionModal] = useState(false);
 const [attentionItems, setAttentionItems] = useState<ItemDoc[]>([]);
+const [plan, setPlan] = useState<"basic" | "pro" | "premium" | "enterprise">("basic");
 
 type ItemDoc = {
   id: string;
@@ -94,12 +95,19 @@ type ItemDoc = {
 
       // 🔔 ATTENTION CHECK (once per session)
       const needsAttentionItems = data.filter(needsAttention);
-      const dismissed = sessionStorage.getItem("restok_attention_dismissed");
+const dismissed = sessionStorage.getItem("restok_attention_dismissed");
 
-      if (needsAttentionItems.length > 0 && !dismissed) {
-        setAttentionItems(needsAttentionItems);
-        setShowAttentionModal(true);
-      }
+const isProOrHigher =
+  plan === "pro" || plan === "premium" || plan === "enterprise";
+
+if (
+  isProOrHigher &&
+  needsAttentionItems.length > 0 &&
+  !dismissed
+) {
+  setAttentionItems(needsAttentionItems);
+  setShowAttentionModal(true);
+}
     }
   );
 
@@ -278,14 +286,16 @@ type ItemDoc = {
         </button>
 
         <button
-          onClick={() => {
-            sessionStorage.setItem("restok_attention_dismissed", "true");
-            router.push("/dashboard/restock");
-          }}
-          className="w-1/2 bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-md"
-        >
-          Review items
-        </button>
+  onClick={() => {
+    sessionStorage.setItem("restok_attention_dismissed", "true");
+
+    const ids = attentionItems.map(i => i.id).join(",");
+    router.push(`/dashboard/restock?review=${ids}`);
+  }}
+  className="w-1/2 bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-md"
+>
+  Review items
+</button>
       </div>
     </div>
   </div>
