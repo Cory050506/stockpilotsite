@@ -17,21 +17,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function DashboardHome() {
-  const router = useRouter();
-
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
-  const [stats, setStats] = useState({
-    totalItems: 0,
-    runningLow: 0,
-    dueToday: 0,
-  });
-  const [showAttentionModal, setShowAttentionModal] = useState(false);
-const [attentionItems, setAttentionItems] = useState<ItemDoc[]>([]);
-const [plan, setPlan] = useState<"basic" | "pro" | "premium" | "enterprise">("basic");
-
 type ItemDoc = {
   id: string;
   name: string;
@@ -39,25 +24,29 @@ type ItemDoc = {
   createdAt?: any;
 };
 
-  // 🌙 Dark mode detection (CLIENT ONLY)
-  const [isDark, setIsDark] = useState(false);
+type Plan = "basic" | "pro" | "premium" | "enterprise";
+
+export default function DashboardHome() {
+  const router = useRouter();
+
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [items, setItems] = useState<ItemDoc[]>([]);
+  const [attentionItems, setAttentionItems] = useState<ItemDoc[]>([]);
+  const [showAttentionModal, setShowAttentionModal] = useState(false);
+  const [plan, setPlan] = useState<Plan>("basic");
+
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    runningLow: 0,
+    dueToday: 0,
+  });
+
+  // -------------------------
+  // AUTH
+  // -------------------------
   useEffect(() => {
-    // this ONLY runs in browser → safe
-    const html = document.documentElement;
-    setIsDark(html.classList.contains("dark"));
-
-    // also listen for theme changes
-    const observer = new MutationObserver(() => {
-      setIsDark(html.classList.contains("dark"));
-    });
-
-    observer.observe(html, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
-  // AUTH CHECK
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       if (!u) return router.push("/login");
 
       setUser(u);
@@ -65,285 +54,225 @@ type ItemDoc = {
       const snap = await getDoc(doc(db, "users", u.uid));
       if (snap.exists()) setProfile(snap.data());
     });
-
-    return () => unsub();
   }, [router]);
 
-  async function sendEmail(to: string, subject: string, message: string) {
-  await fetch("/api/send-email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ to, subject, message }),
-  });
-}
+  // -------------------------
+  // PLAN
+  // -------------------------
+  useEffect(() => {
+    if (!user) return;
 
-useEffect(() => {
-  if (!user) return;
-
-  const unsubUser = onSnapshot(
-    doc(db, "users", user.uid),
-    (userSnap) => {
-      const orgId = userSnap.data()?.orgId;
+    return onSnapshot(doc(db, "users", user.uid), (snap) => {
+      const orgId = snap.data()?.orgId;
       if (!orgId) return;
 
-      const unsubOrg = onSnapshot(
-        doc(db, "organizations", orgId),
-        (orgSnap) => {
-          const rawPlan = orgSnap.data()?.plan;
-          setPlan(
-            rawPlan === "pro" ||
-              rawPlan === "premium" ||
-              rawPlan === "enterprise"
-              ? rawPlan
-              : "basic"
-          );
-        }
-      );
+      onSnapshot(doc(db, "organizations", orgId), (orgSnap) => {
+        const p = orgSnap.data()?.plan;
+        setPlan(
+          p === "pro" || p === "premium" || p === "enterprise"
+            ? p
+            : "basic"
+        );
+      });
+    });
+  }, [user]);
 
-      return () => unsubOrg();
-    }
-  );
-
-  return () => unsubUser();
-}, [user]);
-
-  // FETCH ITEMS
+  // -------------------------
+  // ITEMS
+  // -------------------------
   useEffect(() => {
-  if (!user) return;
+    if (!user) return;
 
-  const unsubItems = onSnapshot(
-    collection(db, "users", user.uid, "items"),
-    (snap) => {
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      })) as ItemDoc[];
+    return onSnapshot(
+      collection(db, "users", user.uid, "items"),
+      (snap) => {
+        const data = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as any),
+        })) as ItemDoc[];
 
-      setItems(data);
-      calculateStats(data);
+        setItems(data);
+        calculateStats(data);
+      }
+    );
+  }, [user]);
 
-      // 🔔 ATTENTION CHECK (once per session)
-      useEffect(() => {
-  if (!items.length) return;
+  // -------------------------
+  // ATTENTION POPUP (FIXED)
+  // -------------------------
+  useEffect(() => {
+    if (!user) return;
+    if (!items.length) return;
 
-  const dismissed = sessionStorage.getItem("restok_attention_dismissed");
-  if (dismissed) return;
+    const isProOrHigher =
+      plan === "pro" || plan === "premium" || plan === "enterprise";
+    if (!isProOrHigher) return;
 
-  const isProOrHigher =
-    plan === "pro" || plan === "premium" || plan === "enterprise";
+    const key = `restok_attention_dismissed_${user.uid}`;
+    if (sessionStorage.getItem(key)) return;
 
-  if (!isProOrHigher) return;
+    const needsAttentionItems = items.filter(needsAttention);
+    if (needsAttentionItems.length === 0) return;
 
-  const needsAttentionItems = items.filter(needsAttention);
-  if (needsAttentionItems.length === 0) return;
+    setAttentionItems(needsAttentionItems);
+    setShowAttentionModal(true);
+  }, [items, plan, user]);
 
-  setAttentionItems(needsAttentionItems);
-  setShowAttentionModal(true);
-}, [items, plan]);
-    }
-  );
-
-  return () => unsubItems();
-}, [user]);
-
-  // CALCULATE STATS
+  // -------------------------
+  // HELPERS
+  // -------------------------
   function needsAttention(item: ItemDoc) {
-  if (!item.createdAt) return false;
+    if (!item.createdAt) return false;
 
-  const created = item.createdAt.toDate();
-  const diffDays = Math.floor(
-    (Date.now() - created.getTime()) / 86400000
-  );
+    const created = item.createdAt.toDate();
+    const diffDays = Math.floor(
+      (Date.now() - created.getTime()) / 86400000
+    );
 
-  return item.daysLast - diffDays <= 3;
-}
-  function calculateStats(items: any[]) {
-    const today = new Date();
+    return item.daysLast - diffDays <= 3;
+  }
+
+  function calculateStats(data: ItemDoc[]) {
     let runningLow = 0;
     let dueToday = 0;
 
-    items.forEach((item) => {
+    data.forEach((item) => {
       if (!item.createdAt) return;
 
       const created = item.createdAt.toDate();
       const emptyDate = new Date(created);
       emptyDate.setDate(emptyDate.getDate() + item.daysLast);
 
-      const diffDays = Math.ceil((emptyDate.getTime() - today.getTime()) / 86400000);
+      const diffDays = Math.ceil(
+        (emptyDate.getTime() - Date.now()) / 86400000
+      );
 
       if (diffDays <= 3) runningLow++;
       if (diffDays === 0) dueToday++;
     });
 
-    setStats({ totalItems: items.length, runningLow, dueToday });
+    setStats({
+      totalItems: data.length,
+      runningLow,
+      dueToday,
+    });
   }
 
-  // GRAPH DATA
   const graphData = items
     .map((item) => {
       if (!item.createdAt) return null;
-
       const created = item.createdAt.toDate();
-      const now = new Date();
-      const diff = Math.floor((now.getTime() - created.getTime()) / 86400000);
-      const daysLeft = Math.max(item.daysLast - diff, 0);
-
-      return { name: item.name, daysLeft };
+      const diff = Math.floor(
+        (Date.now() - created.getTime()) / 86400000
+      );
+      return { name: item.name, daysLeft: Math.max(item.daysLast - diff, 0) };
     })
     .filter(Boolean);
 
   const displayName =
     profile?.name || user?.displayName || user?.email || "there";
 
+  // -------------------------
+  // UI
+  // -------------------------
   return (
     <motion.main
-      className="flex-1 p-10 text-slate-800 dark:text-slate-100"
+      className="flex-1 p-10"
       initial={{ opacity: 0.4 }}
       animate={{ opacity: 1 }}
     >
       <h1 className="text-3xl font-bold">Dashboard</h1>
-
-      <p className="text-slate-600 dark:text-slate-300 mt-2">
-        Welcome back, {displayName}! Here's your supply overview:
+      <p className="mt-2 text-slate-600">
+        Welcome back, {displayName}!
       </p>
 
-      {/* ========================== */}
-      {/*        STATS CARDS        */}
-      {/* ========================== */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
-
-        <div className="p-6 bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg text-slate-600 dark:text-slate-300">Total Items</h2>
-          <p className="text-4xl font-bold mt-2">{stats.totalItems}</p>
-        </div>
-
-        <div className="p-6 bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg text-slate-600 dark:text-slate-300">
-            Running Low (≤ 3 days)
-          </h2>
-          <p className="text-4xl font-bold mt-2 text-amber-500">
-            {stats.runningLow}
-          </p>
-        </div>
-
-        <div className="p-6 bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg text-slate-600 dark:text-slate-300">Due Today</h2>
-          <p className="text-4xl font-bold mt-2 text-red-500">
-            {stats.dueToday}
-          </p>
-        </div>
+      {/* STATS */}
+      <div className="grid md:grid-cols-3 gap-6 mt-10">
+        <Stat label="Total Items" value={stats.totalItems} />
+        <Stat label="Running Low" value={stats.runningLow} color="amber" />
+        <Stat label="Due Today" value={stats.dueToday} color="red" />
       </div>
 
-      {/* ========================== */}
-      {/*        GRAPH CARD         */}
-      {/* ========================== */}
-      <div className="mt-10 bg-white dark:bg-slate-800 p-6 rounded-xl shadow border border-slate-200 dark:border-slate-700">
-        <h2 className="text-xl font-semibold mb-4">Days Left Per Item</h2>
-
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={graphData} style={{ background: "transparent" }}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={isDark ? "#ffffff22" : "#00000022"}
-              />
-
-              <XAxis
-                dataKey="name"
-                stroke="currentColor"
-                tick={{ fill: "currentColor" }}
-              />
-              <YAxis
-                stroke="currentColor"
-                tick={{ fill: "currentColor" }}
-              />
-
-              <Tooltip
-                contentStyle={{
-                  background: isDark ? "#1e293b" : "#ffffff",
-                  border: isDark ? "1px solid #334155" : "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  color: isDark ? "#f1f5f9" : "#1e293b",
-                }}
-              />
-
-              <Line
-                type="monotone"
-                dataKey="daysLeft"
-                stroke="#0ea5e9"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      {/* GRAPH */}
+      <div className="mt-10 bg-white dark:bg-slate-800 p-6 rounded-xl">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={graphData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="daysLeft" stroke="#0ea5e9" strokeWidth={3} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
-      {/* ========================== */}
-{/*   ATTENTION POPUP MODAL   */}
-{/* ========================== */}
-{showAttentionModal && (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-  >
-    <motion.div
-      initial={{ scale: 0.95, y: 10, opacity: 0 }}
-      animate={{ scale: 1, y: 0, opacity: 1 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-lg w-full space-y-4 shadow-xl"
-    >
-      <h2 className="text-lg font-semibold">
-        🔔 Take a look at these items
-      </h2>
 
-      <p className="text-sm text-slate-600 dark:text-slate-400">
-        Some supplies may need restocking soon.
-      </p>
-
-      <div className="space-y-2 max-h-60 overflow-y-auto">
-        {attentionItems.map((item) => (
+      {/* ATTENTION MODAL */}
+      {showAttentionModal && (
+        <motion.div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex justify-between items-center text-sm p-2 rounded bg-slate-100 dark:bg-slate-700"
+            initial={{ scale: 0.95, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            className="bg-white dark:bg-slate-800 p-6 rounded-xl w-full max-w-lg"
           >
-            <span className="font-medium">{item.name}</span>
-            <span className="text-xs text-amber-600 dark:text-amber-300">
-              Needs attention
-            </span>
+            <h2 className="text-lg font-semibold">
+              🔔 Take a look at these items
+            </h2>
+
+            <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+              {attentionItems.map((i) => (
+                <div key={i.id} className="p-2 bg-slate-100 dark:bg-slate-700 rounded">
+                  {i.name}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  sessionStorage.setItem(
+                    `restok_attention_dismissed_${user.uid}`,
+                    "true"
+                  );
+                  setShowAttentionModal(false);
+                }}
+                className="w-1/2 border rounded py-2"
+              >
+                Later
+              </button>
+
+              <button
+                onClick={() => {
+                  sessionStorage.setItem(
+                    `restok_attention_dismissed_${user.uid}`,
+                    "true"
+                  );
+                  const ids = attentionItems.map(i => i.id).join(",");
+                  router.push(`/dashboard/restock?review=${ids}`);
+                }}
+                className="w-1/2 bg-sky-600 text-white rounded py-2"
+              >
+                Review items
+              </button>
+            </div>
           </motion.div>
-        ))}
-      </div>
-
-      <div className="flex gap-2 pt-2">
-        <button
-          onClick={() => {
-            sessionStorage.setItem("restok_attention_dismissed", "true");
-            setShowAttentionModal(false);
-          }}
-          className="w-1/2 border py-2 rounded-md"
-        >
-          Later
-        </button>
-
-        <button
-          onClick={() => {
-            sessionStorage.setItem("restok_attention_dismissed", "true");
-            const ids = attentionItems.map((i) => i.id).join(",");
-            router.push(`/dashboard/restock?review=${ids}`);
-          }}
-          className="w-1/2 bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-md"
-        >
-          Review items
-        </button>
-      </div>
-    </motion.div>
-  </motion.div>
-)}
+        </motion.div>
+      )}
     </motion.main>
+  );
+}
+
+// Small stat card
+function Stat({ label, value, color }: any) {
+  return (
+    <div className="p-6 bg-white dark:bg-slate-800 rounded-xl">
+      <h3 className="text-slate-500">{label}</h3>
+      <p className={`text-4xl font-bold text-${color ?? "slate"}-500`}>
+        {value}
+      </p>
+    </div>
   );
 }
