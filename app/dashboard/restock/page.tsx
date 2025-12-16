@@ -202,6 +202,21 @@ ${user?.displayName || "—"}`;
         Reorder items using your saved vendors.
       </p>
 
+      {/* PRO+ UPSELL */}
+{isProOrHigher && (
+  <div className="mt-6 p-4 rounded-xl bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700 flex justify-between items-center">
+    <p className="text-sm text-sky-800 dark:text-sky-200">
+      💡 Want to potentially save money on your office supplies?
+    </p>
+    <button
+      onClick={() => setShowSavingsModal(true)}
+      className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
+    >
+      Learn more
+    </button>
+  </div>
+)}
+
       <div className="mt-6 space-y-4">
         {items.map((item) => {
           const vendor = item.vendorId
