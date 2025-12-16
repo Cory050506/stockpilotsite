@@ -49,6 +49,8 @@ export default function RestockPage() {
   const [vendors, setVendors] = useState<Record<string, VendorDoc>>({});
   const [plan, setPlan] = useState<keyof typeof PLANS>("basic");
   const [showSavingsModal, setShowSavingsModal] = useState(false);
+  const [showRestockConfirm, setShowRestockConfirm] = useState(false);
+const [restockingItem, setRestockingItem] = useState<ItemDoc | null>(null);
 
   const isProOrHigher =
     plan === "pro" || plan === "premium" || plan === "enterprise";
@@ -105,7 +107,17 @@ export default function RestockPage() {
           setItems(data);
         }
       );
+      useEffect(() => {
+  if (!focusedItemId || items.length === 0) return;
+
+  const item = items.find((i) => i.id === focusedItemId);
+  if (!item) return;
+
+  setRestockingItem(item);
+  setShowRestockConfirm(true);
+}, [focusedItemId, items]);
     });
+
 
     return () => {
       unsubAuth();
@@ -338,7 +350,58 @@ ${user?.displayName || "—"}`;
     </div>
   </div>
 )}
+{/* RESTOCK CONFIRM MODAL */}
+{showRestockConfirm && restockingItem && (
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl max-w-md w-full space-y-4">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        Restock item?
+      </h2>
 
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        Did you restock{" "}
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          {restockingItem.name}
+        </span>
+        ?
+      </p>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={() => {
+            setShowRestockConfirm(false);
+            setRestockingItem(null);
+          }}
+          className="w-1/2 border border-slate-300 dark:border-slate-600 py-2 rounded-md"
+        >
+          Not yet
+        </button>
+
+        <button
+          onClick={async () => {
+            if (!user) return;
+
+            await updateDoc(
+              doc(db, "users", user.uid, "items", restockingItem.id),
+              {
+                createdAt: new Date(),
+              }
+            );
+
+            setShowRestockConfirm(false);
+            setRestockingItem(null);
+
+            // Clean URL (remove ?itemId)
+            router.replace("/dashboard/restock");
+          }}
+          className="w-1/2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-md"
+        >
+          Yes, restocked
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     </motion.main>
   );
