@@ -50,7 +50,7 @@ const reviewIds: string[] =
 
   
 
-  const focusedItemId = searchParams?.get("itemId");
+  
 
   const [user, setUser] = useState<any>(null);
   const [items, setItems] = useState<ItemDoc[]>([]);
@@ -63,20 +63,7 @@ const [restockingItem, setRestockingItem] = useState<ItemDoc | null>(null);
   const isProOrHigher =
     plan === "pro" || plan === "premium" || plan === "enterprise";
 
-      // ----------------------------
-// RESTOCK CONFIRM TRIGGER
-// ----------------------------
-useEffect(() => {
-  if (!focusedItemId) return;
-  if (!items.length) return;
-
-  const item = items.find((i) => i.id === focusedItemId);
-  if (!item) return;
-
-  setRestockingItem(item);
-  setShowRestockConfirm(true);
-}, [focusedItemId, items]);
-  
+      
   
   
     // ----------------------------
@@ -324,21 +311,27 @@ ${user?.displayName || "—"}`;
 
                   {((item.reorderMethod ?? "email") === "email" &&
                   vendor.email) ? (
-                    <a
-                      href={buildVendorEmail(vendor, item)}
-                      className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
-                    >
-                      Email Vendor
-                    </a>
+                    <button
+  onClick={() => {
+    window.location.href = buildVendorEmail(vendor, item);
+    setRestockingItem(item);
+    setShowRestockConfirm(true);
+  }}
+  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
+>
+  Email Vendor
+</button>
                   ) : vendor.website ? (
-                    <a
-                      href={buildVendorSearchUrl(vendor, item.name)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
-                    >
-                      Search for item
-                    </a>
+                    <button
+  onClick={() => {
+    window.open(buildVendorSearchUrl(vendor, item.name)!, "_blank");
+    setRestockingItem(item);
+    setShowRestockConfirm(true);
+  }}
+  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-sm"
+>
+  Search for item
+</button>
                   ) : (
                     <span className="text-xs italic text-slate-400">
                       No contact info

@@ -19,14 +19,13 @@ export async function GET() {
     const user = userDoc.data();
     if (!user.email || !user.orgId) continue;
 
-    // 🔒 Get org + plan
+    // 🔒 Get org
     const orgSnap = await db
       .collection("organizations")
       .doc(user.orgId)
       .get();
 
-    const plan = orgSnap.data()?.plan ?? "basic";
-    if (!["pro", "premium", "enterprise"].includes(plan)) continue;
+    
 
     const itemsSnap = await db
       .collection("users")

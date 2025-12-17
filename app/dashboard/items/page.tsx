@@ -236,9 +236,12 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
     setShowAdd(false);
   }
 
-  function handleRefillItem(id: string) {
-  // Send user to Restock page focused on this item
-  router.push(`/dashboard/restock?itemId=${encodeURIComponent(id)}`);
+  async function handleRefillItem(id: string) {
+  if (!user) return;
+
+  await updateDoc(doc(db, "users", user.uid, "items", id), {
+    createdAt: new Date(),
+  });
 }
 
   async function handleDeleteItem(id: string) {
