@@ -15,7 +15,6 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { sendAlertEmail } from "@/lib/email";
 import { PLANS } from "@/lib/plans";
 
 
@@ -192,18 +191,7 @@ unsubUser = onSnapshot(userRef, (userSnap) => {
             if (status === "ok") return;
             if (alertedStatus[item.id] === status) return;
 
-            sendAlertEmail({
-              toEmail: currentUser.email,
-              toName: currentUser.displayName || "there",
-              subject:
-                status === "out"
-                  ? `🚨 ${item.name} is OUT`
-                  : `⚠️ ${item.name} is running low`,
-              message:
-                status === "out"
-                  ? `${item.name} has run out and needs restocking.`
-                  : `${item.name} will run out soon.`,
-            });
+           
 
             setAlertedStatus((prev) => ({ ...prev, [item.id]: status }));
           });

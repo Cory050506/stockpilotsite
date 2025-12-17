@@ -1,37 +1,23 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { to, subject, message } = body;
+    const { to, subject, html } = await req.json();
 
-    if (!to || !subject || !message) {
+    if (!to || !subject || !html) {
       return NextResponse.json(
-        { error: "Missing required fields." },
+        { error: "Missing fields" },
         { status: 400 }
       );
     }
 
-    const email = await resend.emails.send({
-      from: "StockPilot <alerts@stockpilot.qzz.io>",
-      to,
-      subject,
-      html: `
-        <div style="font-family: Arial; padding: 16px;">
-          <h2 style="color: #0ea5e9;">${subject}</h2>
-          <p>${message}</p>
-        </div>
-      `,
-    });
+    await sendEmail({ to, subject, html });
 
-    return NextResponse.json({ success: true, email });
-  } catch (err: any) {
-    console.error(err);
+    return NextResponse.json({ success: true });
+  } catch (err) {
     return NextResponse.json(
-      { error: err.message || "Email send failed." },
+      { error: "Failed to send email" },
       { status: 500 }
     );
   }

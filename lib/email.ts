@@ -1,25 +1,43 @@
-import emailjs from "@emailjs/browser";
+import { Resend } from "resend";
 
-export function sendAlertEmail({
-  toEmail,
-  toName,
-  subject,
-  message,
-}: {
-  toEmail: string;
-  toName: string;
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+type SendEmailOptions = {
+  to: string | string[];
   subject: string;
-  message: string;
-}) {
-  return emailjs.send(
-    process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-    process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-    {
-      to_email: toEmail,
-      to_name: toName,
+  html: string;
+  text?: string;
+  from?: string;
+};
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+  from = "Restok <no-reply@getrestok.com>",
+}: SendEmailOptions) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("Missing RESEND_API_KEY");
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from,
+      to,
       subject,
-      message,
-    },
-    process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
-  );
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error("❌ Resend error:", error);
+      throw error;
+    }
+
+    return data;
+  } catch (err) {
+    console.error("❌ Email send failed:", err);
+    throw err;
+  }
 }
