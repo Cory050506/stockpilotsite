@@ -69,14 +69,98 @@ export async function GET() {
         to: user.email,
         subject,
         html: `
-          <h2>${subject}</h2>
-          <p>${message}</p>
-          <a href="https://getrestok.com/dashboard/restock"
-             style="display:inline-block;margin-top:12px;padding:10px 14px;
-             background:#0ea5e9;color:white;border-radius:6px;text-decoration:none">
-            Review items
-          </a>
-        `,
+  <div style="
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    background-color: #f1f5f9;
+    padding: 32px;
+  ">
+    <div style="
+      max-width: 520px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    ">
+      <!-- HEADER -->
+      <h1 style="
+        margin: 0 0 8px 0;
+        font-size: 22px;
+        color: #0f172a;
+      ">
+        ${daysLeft <= 0 ? "🚨 Item Out of Stock" : "⚠️ Item Running Low"}
+      </h1>
+
+      <p style="
+        margin: 0 0 20px 0;
+        font-size: 15px;
+        color: #475569;
+      ">
+        This is a restock alert from <strong>Restok</strong>.
+      </p>
+
+      <!-- ITEM CARD -->
+      <div style="
+        background-color: ${daysLeft <= 0 ? "#fee2e2" : "#fef3c7"};
+        border: 1px solid ${daysLeft <= 0 ? "#fecaca" : "#fde68a"};
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+      ">
+        <p style="
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #0f172a;
+        ">
+          ${item.name}
+        </p>
+
+        <p style="
+          margin: 6px 0 0 0;
+          font-size: 14px;
+          color: #7c2d12;
+        ">
+          ${
+            daysLeft <= 0
+              ? "This item has run out and needs restocking."
+              : `This item will run out in <strong>${daysLeft} days</strong>.`
+          }
+        </p>
+      </div>
+
+      <!-- CTA BUTTON -->
+      <a href="https://getrestok.com/dashboard/restock"
+        style="
+          display: block;
+          width: 100%;
+          text-align: center;
+          background-color: #0ea5e9;
+          color: #ffffff;
+          text-decoration: none;
+          padding: 14px 0;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 15px;
+        "
+      >
+        Review & Restock Items
+      </a>
+
+      <!-- FOOTER -->
+      <p style="
+        margin-top: 20px;
+        font-size: 12px;
+        color: #64748b;
+        text-align: center;
+      ">
+        You’re receiving this email because you use Restok to track supplies.
+        <br />
+        © ${new Date().getFullYear()} Restok
+      </p>
+    </div>
+  </div>
+`,
       });
 
       await itemDoc.ref.update({
